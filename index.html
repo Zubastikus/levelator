@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Левелатор</title>
+	<script src="pixi.min.js"></script>
+	<link rel="stylesheet" type="text/css" href="bootstrap.min.css"><link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+	<meta charset="utf-8">
+	<style type="text/css">
+		.lvl{
+			opacity: 0.6;
+			padding: 2px;
+			display: flex;
+			width: 90px;
+			text-shadow: 2px 1px 2px white;
+		}
+		.lvlsblock p{
+			margin: 2px;
+		}
+		.lvlsblock input{
+			margin-top: auto;
+			margin-bottom: auto;
+		}
+		.d-flex{display: flex;}
+		.lvlnone{
+			background: linear-gradient(45deg, #000000, #FFFFFF);
+			padding: 3px;
+			text-align: center;
+			color: white;
+		}
+		.lvlall{
+			background: linear-gradient(135deg, #FF0000, #FFFF00, #0000FF, #00FF00, #00FFFF);
+			padding: 3px;
+			color: white;
+			text-align: center;
+		}
+		.m-0{margin: 0;}
+		.interface-btn{
+
+		}
+		.text-shadow-black{text-shadow: 1px 1px 2px black;}
+		.text-white{color: white;}
+		.position-absolute{position: absolute;}
+		body::-webkit-scrollbar {width:0px;}
+	</style>
+</head>
+<body style="padding: 0; margin: 0;">
+<div class="sticky-top">
+	<button class="position-absolute interface_btn">Скрыть интерфейс</button>
+	<div class="interface">
+		<div class="position-absolute text-white text-shadow-black">
+			<input type="file" name="" class="img" value="Картинка" accept="image/*" id="image"><br>
+			<!-- <button class="img-btn">Вставить</button> -->
+			<div class="form-group">
+				<label for="formControlRange" class="range_value">Видимость уровней: 50%</label>
+				<input type="range" class="form-control-range" id="formControlRange" style="width: 200px;">
+			</div>
+			<p class="m-0">Режим рисования:</p>
+			<input type="radio" name="mode" value="1" class="mode" checked="true">вкл<br>
+			<input type="radio" name="mode" value="2"  class="mode">выкл<br>
+		</div>
+		<div style="" class="lvlsblock position-absolute">
+			<div style="" class="lvlall">
+				<p class="m-0">all</p>
+			</div>
+			<div style="  " class="lvlnone">
+				<p class="m-0">nothing</p>
+			</div>
+			<div class="d-flex">
+				<input type="checkbox" name="check_lvl" checked="true" class="check_lvl">
+				<div style="opacity: 1;" class="lvl" >
+					<p>1 уровень</p>
+				</div>
+			</div>
+			<div class="d-flex">
+				<input type="checkbox" name="check_lvl" class="check_lvl">
+				<div class="lvl">
+					<p>2 уровень</p>
+				</div>
+			</div>
+			<div class="d-flex">
+				<input type="checkbox" name="check_lvl" class="check_lvl">
+				<div class="lvl">
+					<p>3 уровень</p>
+				</div>
+			</div>
+			<div class="d-flex">
+				<input type="checkbox" name="check_lvl" class="check_lvl">
+				<div class="lvl">
+					<p>4 уровень</p>
+				</div>
+			</div>
+			<div class="d-flex">
+				<input type="checkbox" name="check_lvl" class="check_lvl">
+				<div class="lvl">
+					<p>5 уровень</p>
+				</div>
+			</div>
+			<div class="newlvl text-white">
+				<p>+ уровень</p>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+
+</script>
+<script type="text/javascript">
+//добавить отмену (btn на экране)
+let windows = {
+	height: window.innerHeight,
+	width: window.innerWidth
+}
+img = document.querySelector(".img")
+imgBtn = document.querySelector(".img-btn")
+lvlsblock = document.querySelector(".lvlsblock")
+lvlsblock.style.marginLeft = String(windows.width - lvlsblock.offsetWidth)  + "px"
+const app = new PIXI.Application();
+document.body.appendChild(app.view);
+app.renderer.resize(windows.width,windows.height)
+const renderTexture = PIXI.RenderTexture.create(app.screen.width, app.screen.height);
+const renderTextureSprite = new PIXI.Sprite(renderTexture);
+app.stage.addChild(renderTextureSprite);
+app.stage.interactive = true
+let rect = ''
+let dragging = false;
+let x2 = 0; let x1 = 0; let x = 0;
+let y2 = 0; let y1 = 0; let y = 0;
+let radio_mode = document.querySelectorAll(".mode")
+let lvls = document.querySelectorAll(".lvl")
+let lvlall = document.querySelector(".lvlall")
+let lvlnone = document.querySelector(".lvlnone")
+let check_lvl = document.querySelectorAll(".check_lvl")
+let range = document.querySelector(".form-control-range")
+let range_value = document.querySelector(".range_value")
+let interface = document.querySelector(".interface")
+let interface_btn = document.querySelector(".interface_btn")
+let clrs = [0xFF0000, 0xFFFF00, 0x0000FF, 0x00FF00, 0x00FFFF,   0xf70793, 0xb30000, 0x07f7ab, 0xffd582] //основные цвета с 0x вместо #
+let clrs16 = ["#FF0000", "#FFFF00", "#0000FF", "#00FF00", "#00FFFF",   "#f70793", "#b30000", "#07f7ab", "#ffd582"] //основные цвета
+let activelvl = 0
+let alpha = 0.5
+let rects = [[],[],[],[],[]]
+
+
+
+for (var i = 0; i < lvls.length; i++) { //распределение цветов
+	lvls[i].style.backgroundColor = clrs16[i]
+}
+let reDraw = function(){ //функция для перерисовки всех уровней
+	for (let i = 0; i < rects.length; i++) {
+		if (check_lvl[i].checked) {
+			rects[i][i2].parent.removeChild(rects[i][i2])
+			for (let i2 = 0; i2 < rects[i].length; i2++) {
+				rects[i][i2].alpha = alpha
+				app.stage.addChild(rects[i][i2])
+			}
+		}
+	}
+}
+var url = window.URL || window.webkitURL;
+let oldback = ''
+let back_count = 0
+let input_file = document.getElementById('image')
+let back_width,back_height,newHeight;
+document.getElementById('image').onchange = function(event) { //предпросмотр картинки и изменение её размеров под канвас
+	var file, img;
+    if ((file = this.files[0])) {
+        img = new Image();
+        img.onload = function () {
+            back_width = this.width
+            back_height = this.height
+            newHeight = (windows.width*back_height)/back_width
+			app.renderer.resize(windows.width,newHeight)
+			windows.height = newHeight
+			windows.width = window.innerWidth
+			var reader = new FileReader();
+			reader.onload = function(){
+				background = reader.result;
+				app.loader.add(String(back_count), background);
+				background = PIXI.Sprite.from(background);
+				if (oldback!=''){
+					app.stage.removeChild(oldback)
+				}
+				
+				background.width = windows.width
+				background.height = newHeight
+				app.stage.addChild(background);
+				oldback = background
+				back_count+=1
+			};
+		reader.readAsDataURL(event.target.files[0]);
+        };
+        img.src = url.createObjectURL(file);
+    }
+};
+interface_btn.style.marginLeft = windows.width/2-interface_btn.offsetWidth/2+"px"
+interface_btn.display = true
+interface_btn.onclick = function(){ //события нажатия на кнопку "скрыть/показать интерфейс"
+	if (interface_btn.display) {
+		interface.style.display = "none"
+		interface_btn.innerHTML = "Показать интерфейс"
+		interface_btn.display = !interface_btn.display
+	} else {
+		interface.style.display = "block"
+		interface_btn.innerHTML = "Скрыть интерфейс"
+		interface_btn.display = !interface_btn.display
+	}
+}
+range.onchange = function(){ //изменение прозрачности
+	alpha = range.value/100
+	range_value.innerHTML = "Видимость уровней: "+range.value+"%"
+	for (let i = 0; i < rects.length; i++) {
+		for (let i2 = 0; i2 < rects[i].length; i2++) {
+			rects[i][i2].alpha = alpha
+		}
+	}
+}
+range.oninput = function(){ //изменение прозрачности
+	alpha = range.value/100
+	range_value.innerHTML = "Видимость уровней: "+range.value+"%"
+	for (let i = 0; i < rects.length; i++) {
+		for (let i2 = 0; i2 < rects[i].length; i2++) {
+			rects[i][i2].alpha = alpha
+		}
+	}
+}
+let activating = function(I){ //активация видимости уровня (при нажатии на кнопку)
+	if (check_lvl[(I)].checked) { //если уровень активируется
+		for (let i = 0; i < rects.length; i++) {
+			if (check_lvl[i].checked) {
+				for (let i2 = 0; i2 < rects[i].length; i2++) {
+					if (i!=I) {
+						rects[i][i2].parent.removeChild(rects[i][i2])
+					}
+					rects[i][i2].alpha = alpha
+					app.stage.addChild(rects[i][i2])
+				}
+			}
+		}
+	} else { //если уровень дезактивируется
+		one = true
+		if ((I)==activelvl) {
+			for (let i = 0; i < rects.length; i++) {
+				if (check_lvl[i].checked) {
+					one = false
+					lvl_active(i)
+					break
+				}
+			}
+			if (one) {
+				mode = 'none'
+				radio_mode[1].checked = true
+				app.stage.interactive = false
+				lvls[activelvl].style.opacity = 0.6
+				activelvl = "nothing"
+			}
+		}
+		if (one) {
+			for (let i = 0; i < rects[(I)].length; i++) {
+				rects[(I)][i].parent.removeChild(rects[(I)][i])
+			}
+		}
+	}
+}
+let lvl_active = function(argI){ //активация уровня
+	mode = 'drawing'
+	radio_mode[0].checked = true
+	app.stage.interactive = true
+	if (activelvl == 'all') { //если были видны все уровни
+		for (let i2 = 0; i2 < rects.length; i2++) {
+			for (let i3 = 0; i3 < rects[i2].length; i3++) {
+				rects[i2][i3].parent.removeChild(rects[i2][i3])
+			}
+		}
+	} else if (activelvl == "nothing") { //если все уровни были отключены
+
+	} else { //если до этого был активен другой уровень
+		for (let i2 = 0; i2 < rects[activelvl].length; i2++) {
+			rects[activelvl][i2].parent.removeChild(rects[activelvl][i2])
+		}
+		lvls[activelvl].style.opacity = 0.6
+	}
+	activelvl = (argI)
+	check_lvl[(argI)].checked = true
+	lvls[(argI)].style.opacity = 1
+	for (let i2 = 0; i2 < rects.length; i2++) { //добавление всех уровней на экран
+		if (check_lvl[i2].checked) {
+			for (let i3 = 0; i3 < rects[i2].length; i3++) {
+				rects[i2][i3].alpha = alpha
+				app.stage.addChild(rects[i2][i3])
+			}
+		}
+	}
+	rect = ''
+}
+initClicks();
+lvlall.onclick = function(){ //событие нажатия на див all для показа всех уровней
+	mode = 'none'
+	radio_mode[1].checked = true
+	app.stage.interactive = false
+	if (activelvl != "nothing" && activelvl != "all") {
+		for (let i = 0; i < rects[activelvl].length; i++) {
+			rects[activelvl][i].parent.removeChild(rects[activelvl][i])
+		}
+		lvls[activelvl].style.opacity = 0.6
+	}
+	activelvl = 'all'
+	for (let i = 0; i < rects.length; i++) {
+		check_lvl[i].checked = true
+		for (let i2 = 0; i2 < rects[i].length; i2++) {
+			app.stage.addChild(rects[i][i2])
+		}
+	}
+}
+lvlnone.onclick = function(){ //событие нажатия на див nothing чтоб скрыть все уровни
+	mode = 'none'
+	radio_mode[1].checked = true
+	app.stage.interactive = false
+	for (let i = 0; i < rects.length; i++) {
+		if (check_lvl[i].checked) {
+			check_lvl[i].checked = false
+			for (let i2 = 0; i2 < rects[i].length; i2++) {
+				rects[i][i2].parent.removeChild(rects[i][i2])
+			}
+		}
+	}
+	if (activelvl != "nothing" && activelvl != "all") {
+		lvls[activelvl].style.opacity = 0.6
+	}
+	activelvl = "nothing"
+}
+let mode = 'drawing'
+radio_mode[0].onchange = function(){ //включение режима рисования, т.е. при клике на экран будет создаваться прямоугольник
+	mode = 'drawing'
+	app.stage.interactive = true
+}
+radio_mode[1].onchange = function(){ //отключение режима рисования, т.е. при клике на экран прямоугольник создаваться не будет
+	mode = 'none'
+	app.stage.interactive = false
+}
+let newlvl = document.querySelector(".newlvl") //обЪявление дива, создающего новый уровень
+let last_lvl = 4 // кол-во всех уровней (0-4)
+let create_newlvl = function(){ //создание нового уровня и newlvl
+	let lvl = document.createElement('div')
+	rects.push([])
+	lvl.className = 'd-flex'
+	let inp = document.createElement('input')
+	inp.type = 'checkbox'
+	inp.className = 'check_lvl'
+	lvl.appendChild(inp)
+	let div = document.createElement('div')
+	div.className = 'lvl'
+	lvl.appendChild(div)
+	last_lvl = rects.length-1
+	div.style.backgroundColor = clrs16[last_lvl]
+	lvl.appendChild(div)
+	let text = document.createElement('p')
+	text.innerHTML = last_lvl+1+' уровень'
+	div.appendChild(text)
+	newlvl.parentElement.appendChild(lvl)
+	check_lvl = document.querySelectorAll(".check_lvl")
+	lvls = document.querySelectorAll(".lvl")
+	lvl_active(last_lvl)
+	newlvl.parentElement.removeChild(newlvl)
+	if (last_lvl<8){
+		newlvl = document.createElement('div')
+		newlvl.style.color = 'white'
+		lvlsblock.appendChild(newlvl)
+		text = document.createElement('p')
+		text.innerHTML = '+ уровень'
+		newlvl.appendChild(text)
+		newlvl.className = 'newlvl'
+		newlvl = document.querySelector(".newlvl")
+		newlvl.onclick = function(){create_newlvl()}
+	}
+	initClicks();
+}
+
+function initClicks() {
+	lvls.forEach( (item, index) => {
+		item.onclick = () => {
+			lvl_active(index)
+		};
+	});
+	check_lvl.forEach( (item, index) => {
+		item.onchange = () => {
+			activating(index)
+		};
+	});
+	for (let i = 0; i < lvls.length; i++) { 
+		addEventListener("keydown", function(event) { //объявление событий нажатия клавиш для активации каждого уровня
+			if (event.keyCode == 49+i) {
+				lvl_active(i)
+			}
+		})
+	}
+}
+newlvl.onclick = create_newlvl
+	
+app.stage.on('pointerdown', function(){ //включение создания и изменения прямоугольников 
+	dragging = true;
+	x1 = Math.round(event.offsetX)
+	y1 = Math.round(event.offsetY)
+	pointerMove(event);
+})
+app.stage.on('pointerup', function(){ //отключение создания и изменения прямоугольников
+	dragging = false;
+	if (x>=1 && y>=1) {
+		rects[activelvl].push(rect)
+		console.log(xx1,yy1,x,y)
+	}
+		console.log(xx1,yy1,x,y)
+	rect = ''
+});
+app.view.onmousemove = pointerMove; //событие, запускающее функцию создания и изменения прямоугольников
+function pointerMove(event) { //функция создания и изменения прямоугольников
+	if (dragging) {
+		if (rect!='') {rect.parent.removeChild(rect)}
+		x2 = event.offsetX
+		y2 = event.offsetY
+		if (x1<x2 && y1<y2) {
+			x = x2-x1
+			y = y2-y1
+			xx1 = x1
+			yy1 = y1
+		} else if (x1<x2 && y1>y2) {
+			x = x2-x1
+			y = y1-y2
+			xx1 = x1
+			yy1 = y1-y
+		} else if (x1>x2 && y1>y2) {
+			x = x1-x2
+			y = y1-y2
+			xx1 = x1-x
+			yy1 = y1-y
+		} else if (x1>x2 && y1<y2) {
+			x = x1-x2
+			y = y2-y1
+			xx1 = x1-x
+			yy1 = y1
+		} else if (x1==x2 && y1==y2) {
+			xx1 = 0
+			yy1 = 0
+			x = 0
+			y = 0
+		}
+		rect = new PIXI.Graphics();
+		rect.beginFill(clrs[activelvl]);
+		//rect.lineStyle(2, 0xFF0000); //border
+		rect.drawRect(xx1, yy1, x, y);
+		rect.alpha = alpha
+		app.stage.addChild(rect);
+	}
+}
+window.onresize = function(){ //изменение размеров окна
+	windows.width = window.innerWidth
+	lvlsblock.style.marginLeft = String(windows.width - lvlsblock.offsetWidth)  + "px"
+	interface_btn.style.marginLeft = windows.width/2-interface_btn.offsetWidth/2+"px"
+	app.renderer.resize(windows.width,windows.height)
+}
+</script>
+<script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+</body>
+</html>
